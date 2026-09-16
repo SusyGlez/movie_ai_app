@@ -1,6 +1,7 @@
 import "dotenv/config";
 import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 /** OpenAI (DeepSeek) config */
 if (!process.env.OPENAI_API_KEY)
@@ -16,3 +17,9 @@ if (!privateKey) throw new Error(`Expected env var SUPABASE_API_KEY`);
 const url = process.env.SUPABASE_URL;
 if (!url) throw new Error(`Expected env var SUPABASE_URL`);
 export const supabase = createClient(url, privateKey);
+
+/** Gemini config */
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+export const embeddingModel = genAI.getGenerativeModel({
+  model: "gemini-embedding-001",
+});

@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.116.0",
     "@tailwindcss/cli": "^4.3.3",
     "cors": "^2.8.6",
@@ -7,5 +8,6 @@
     "express": "^5.2.1",
     "openai": "^7.10.0",
     "tailwindcss": "^4.3.3"
-  }
+  },
+  "type": "module"
 }

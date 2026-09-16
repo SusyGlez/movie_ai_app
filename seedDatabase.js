@@ -1,4 +1,4 @@
-import { openai, supabase } from "./config.js";
+import { embeddingModel, supabase } from "./config.js";
 import movies from "./content.js";
 
 // Convierte "3 hr 10 min" a minutos totales
@@ -13,17 +13,15 @@ function parseDuration(content) {
 async function seedDatabase() {
   const data = await Promise.all(
     movies.map(async (movie) => {
-      const embeddingResponse = await openai.embeddings.create({
-        model: "text-embedding-ada-002",
-        input: movie.content,
-      });
+      const result = await embeddingModel.embedContent(movie.content);
+      const embeddingVector = result.embedding.values;
 
       return {
         title: movie.title,
         release_year: movie.releaseYear,
         content: movie.content,
         duration_minutes: parseDuration(movie.content),
-        embedding: embeddingResponse.data[0].embedding,
+        embedding: embeddingVector,
       };
     }),
   );
