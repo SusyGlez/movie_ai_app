@@ -1,26 +1,31 @@
+import fs from "fs";
 import { embeddingModel, supabase } from "./config.js";
-import movies from "./content.js";
 
-// Convierte "3 hr 10 min" a minutos totales
-function parseDuration(content) {
-  const match = content.match(/\((\d+)\s*hr(?:\s*(\d+)\s*min)?/);
-  if (!match) return null;
-  const hours = parseInt(match[1]);
-  const minutes = match[2] ? parseInt(match[2]) : 0;
-  return hours * 60 + minutes;
-}
+const rawData = fs.readFileSync("./allMovies.json", "utf-8");
+const allMovies = JSON.parse(rawData);
+
+// Only keep movies that have a plot and a runtime, then take a manageable sample
+const usableMovies = allMovies.filter(
+  (m) => m.plot && m.runtime && m.year && m.imdb?.rating,
+);
+
+const moviesToSeed = usableMovies
+  .sort((a, b) => b.year - a.year || b.imdb.rating - a.imdb.rating)
+  .slice(0, 300);
 
 async function seedDatabase() {
   const data = await Promise.all(
-    movies.map(async (movie) => {
-      const result = await embeddingModel.embedContent(movie.content);
+    moviesToSeed.map(async (movie) => {
+      const textForEmbedding = `${movie.title}. Genres: ${(movie.genres || []).join(", ")}. Plot: ${movie.plot}`;
+
+      const result = await embeddingModel.embedContent(textForEmbedding);
       const embeddingVector = result.embedding.values;
 
       return {
         title: movie.title,
-        release_year: movie.releaseYear,
-        content: movie.content,
-        duration_minutes: parseDuration(movie.content),
+        release_year: String(movie.year),
+        content: textForEmbedding,
+        duration_minutes: movie.runtime,
         embedding: embeddingVector,
       };
     }),
@@ -28,10 +33,10 @@ async function seedDatabase() {
 
   const { error } = await supabase.from("documents").insert(data);
   if (error) {
-    console.error("Error al insertar:", error);
+    console.error("Error inserting:", error);
     return;
   }
-  console.log(`¡${data.length} películas insertadas con éxito!`);
+  console.log(`${data.length} movies inserted successfully!`);
 }
 
 seedDatabase();
