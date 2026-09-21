@@ -1,8 +1,12 @@
 import fs from "fs";
+import { EJSON } from "bson";
 import { embeddingModel, supabase } from "./config.js";
 
 const rawData = fs.readFileSync("./allMovies.json", "utf-8");
-const allMovies = JSON.parse(rawData);
+const allMovies = rawData
+  .trim()
+  .split("\n")
+  .map((line) => EJSON.parse(line));
 
 // Only keep movies that have a plot and a runtime, then take a manageable sample
 const usableMovies = allMovies.filter(
