@@ -4,10 +4,10 @@ import { createClient } from "@supabase/supabase-js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 /** OpenAI (DeepSeek) config */
-if (!process.env.OPENAI_API_KEY)
+if (!process.env.DEEPSEEK_API_KEY)
   throw new Error("OpenAI API key is missing or invalid.");
-export const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+export const deepseek = new OpenAI({
+  apiKey: process.env.DEEPSEEK_API_KEY,
   baseURL: "https://api.deepseek.com",
 });
 

@@ -42,7 +42,7 @@ app.post("/recommend", async (req, res) => {
     const { data: candidates, error } = await supabase.rpc("match_documents", {
       query_embedding: queryEmbedding,
       match_threshold: 0.3,
-      match_count: 10,
+      match_count: 20,
     });
 
     if (error) {
@@ -50,8 +50,43 @@ app.post("/recommend", async (req, res) => {
       return res.status(500).json({ error: "Error searching for movies" });
     }
 
-    console.log("Candidates found:", candidates);
-    res.json({ summaryText, candidates });
+    const availableMinutes = req.body.availableMinutes;
+    const filteredCandidates = candidates.filter(
+      (movie) => movie.duration_minutes <= availableMinutes,
+    );
+
+    const finalPicks = filteredCandidates.slice(0, 5); // Recommends up to 5, never forces 5 recommendations
+    const picksWithDescriptions = await Promise.all(
+      finalPicks.map(async (movie) => {
+        const descriptionResponse = await deepseek.chat.completions.create({
+          model: "deepseek-chat",
+          messages: [
+            {
+              role: "system",
+              content:
+                "Write a short, engaging one-sentence description of this movie for a recommendation app. Do not include the title, year, or rating.",
+            },
+            { role: "user", content: movie.content },
+          ],
+        });
+
+        return {
+          title: movie.title,
+          releaseYear: movie.release_year,
+          durationMinutes: movie.duration_minutes,
+          description: descriptionResponse.choices[0].message.content,
+        };
+      }),
+    );
+
+    console.log(
+      `Found ${candidates.length} candidates, ${filteredCandidates.length} fit the time available. Returning ${picksWithDescriptions.length}.`,
+    );
+    res.json({
+      summaryText,
+      picks: picksWithDescriptions,
+      count: picksWithDescriptions.length,
+    });
   } catch (err) {
     console.error("Error in /recommend:", err);
     res.status(500).json({ error: "Something went wrong" });

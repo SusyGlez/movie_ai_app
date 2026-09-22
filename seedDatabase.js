@@ -8,39 +8,79 @@ const allMovies = rawData
   .split("\n")
   .map((line) => EJSON.parse(line));
 
-// Only keep movies that have a plot and a runtime, then take a manageable sample
-const usableMovies = allMovies.filter(
-  (m) => m.plot && m.runtime && m.year && m.imdb?.rating,
-);
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-const moviesToSeed = usableMovies
-  .sort((a, b) => b.year - a.year || b.imdb.rating - a.imdb.rating)
-  .slice(0, 300);
+function shuffleArray(array) {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+async function getExistingTitles() {
+  const { data, error } = await supabase.from("documents").select("title");
+  if (error) {
+    console.error("Error fetching existing titles:", error);
+    return [];
+  }
+  return data.map((row) => row.title);
+}
+
+async function embedMovie(movie) {
+  const textForEmbedding = `${movie.title}. Genres: ${(movie.genres || []).join(", ")}. Plot: ${movie.plot}`;
+  const result = await embeddingModel.embedContent(textForEmbedding);
+
+  return {
+    title: movie.title,
+    release_year: String(movie.year),
+    content: textForEmbedding,
+    duration_minutes: movie.runtime,
+    embedding: result.embedding.values,
+  };
+}
 
 async function seedDatabase() {
-  const data = await Promise.all(
-    moviesToSeed.map(async (movie) => {
-      const textForEmbedding = `${movie.title}. Genres: ${(movie.genres || []).join(", ")}. Plot: ${movie.plot}`;
+  const existingTitles = await getExistingTitles();
+  console.log(`You already have ${existingTitles.length} movies saved.`);
 
-      const result = await embeddingModel.embedContent(textForEmbedding);
-      const embeddingVector = result.embedding.values;
-
-      return {
-        title: movie.title,
-        release_year: String(movie.year),
-        content: textForEmbedding,
-        duration_minutes: movie.runtime,
-        embedding: embeddingVector,
-      };
-    }),
+  const usableMovies = allMovies.filter(
+    (m) =>
+      m.plot &&
+      m.runtime &&
+      m.year &&
+      m.imdb?.rating &&
+      m.year >= 1990 &&
+      m.year <= 2026 &&
+      !existingTitles.includes(m.title),
   );
 
-  const { error } = await supabase.from("documents").insert(data);
+  const moviesToSeed = shuffleArray(usableMovies).slice(0, 100);
+
+  const batchSize = 50;
+  const allData = [];
+
+  for (let i = 0; i < moviesToSeed.length; i += batchSize) {
+    const batch = moviesToSeed.slice(i, i + batchSize);
+    console.log(`Processing batch ${i / batchSize + 1}...`);
+
+    const batchData = await Promise.all(batch.map(embedMovie));
+    allData.push(...batchData);
+
+    if (i + batchSize < moviesToSeed.length) {
+      await sleep(60000);
+    }
+  }
+
+  const { error } = await supabase.from("documents").insert(allData);
   if (error) {
     console.error("Error inserting:", error);
     return;
   }
-  console.log(`${data.length} movies inserted successfully!`);
+  console.log(`${allData.length} movies inserted successfully!`);
 }
 
 seedDatabase();
