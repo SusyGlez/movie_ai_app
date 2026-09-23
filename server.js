@@ -23,8 +23,18 @@ async function fetchPoster(title) {
 app.post("/recommend", async (req, res) => {
   try {
     const profiles = req.body.people;
+    const availableMinutes = req.body.availableMinutes;
 
-    // 1. Combine the profiles into a summary, using DeepSeek
+    // 1. Calculate an explicit, objective mood count
+    const moodCounts = profiles.reduce((counts, p) => {
+      counts[p.mood] = (counts[p.mood] || 0) + 1;
+      return counts;
+    }, {});
+
+    const moodSummary = Object.entries(moodCounts)
+      .map(([mood, count]) => `${count}x ${mood}`)
+      .join(", ");
+
     const profilesText = profiles
       .map(
         (p, i) =>
@@ -37,8 +47,9 @@ app.post("/recommend", async (req, res) => {
       messages: [
         {
           role: "system",
-          content:
-            "Combine the preferences of multiple people into a single short paragraph describing what kind of movie the group would enjoy together.",
+          content: `Combine the preferences of multiple people into a single short paragraph describing what kind of movie the group would enjoy together.
+
+IMPORTANT: Weigh every person's mood equally, regardless of how much detail they wrote. A person who wrote a long explanation should NOT count more than someone who only wrote a short answer. The group mood tally is: ${moodSummary}. This tally reflects the group's true preference and should be the PRIMARY signal — treat individual favorite movies and explanations as secondary flavor, not as override signals.`,
         },
         { role: "user", content: profilesText },
       ],
@@ -63,8 +74,17 @@ app.post("/recommend", async (req, res) => {
       return res.status(500).json({ error: "Error searching for movies" });
     }
 
-    const availableMinutes = req.body.availableMinutes;
-    const filteredCandidates = candidates.filter(
+    const genresToAvoid = profiles
+      .map((p) => p.genreToAvoid)
+      .filter((g) => g && g.length > 0)
+      .map((g) => g.toLowerCase());
+
+    const genreFilteredCandidates = candidates.filter((movie) => {
+      const movieContentLower = movie.content.toLowerCase();
+      return !genresToAvoid.some((genre) => movieContentLower.includes(genre));
+    });
+
+    const filteredCandidates = genreFilteredCandidates.filter(
       (movie) => movie.duration_minutes <= availableMinutes,
     );
 

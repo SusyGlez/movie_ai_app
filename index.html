@@ -18,9 +18,20 @@
       <h1 class="text-6xl font-[Carter_One] font-bold text-white">PopChoice</h1>
     </div>
     <div class="flex flex-col justify-center">
-      <input aria-label="How many people?" />
-      <input aria-label="How much time do you have?" />
+      <input
+        id="peopleCount"
+        aria-label="How many people?"
+        type="number"
+        min="1"
+      />
+      <input
+        id="availableTime"
+        aria-label="How much time do you have?"
+        placeholder="e.g. 2 hours 30 minutes"
+      />
+      <button id="startButton">Start</button>
     </div>
+    <div id="appContainer"></div>
     <script type="module" src="index.js"></script>
   </body>
 </html>
