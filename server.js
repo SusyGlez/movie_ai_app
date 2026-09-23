@@ -7,6 +7,19 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+async function fetchPoster(title) {
+  const response = await fetch(
+    `http://www.omdbapi.com/?t=${encodeURIComponent(title)}&apikey=${process.env.OMDB_API_KEY}`,
+  );
+  const data = await response.json();
+
+  if (data.Response === "False" || !data.Poster || data.Poster === "N/A") {
+    return null;
+  }
+
+  return data.Poster;
+}
+
 app.post("/recommend", async (req, res) => {
   try {
     const profiles = req.body.people;
@@ -58,23 +71,27 @@ app.post("/recommend", async (req, res) => {
     const finalPicks = filteredCandidates.slice(0, 5); // Recommends up to 5, never forces 5 recommendations
     const picksWithDescriptions = await Promise.all(
       finalPicks.map(async (movie) => {
-        const descriptionResponse = await deepseek.chat.completions.create({
-          model: "deepseek-chat",
-          messages: [
-            {
-              role: "system",
-              content:
-                "Write a short, engaging one-sentence description of this movie for a recommendation app. Do not include the title, year, or rating.",
-            },
-            { role: "user", content: movie.content },
-          ],
-        });
+        const [descriptionResponse, posterUrl] = await Promise.all([
+          deepseek.chat.completions.create({
+            model: "deepseek-chat",
+            messages: [
+              {
+                role: "system",
+                content:
+                  "Write a short, engaging one-sentence description of this movie for a recommendation app. Do not include the title, year, or rating.",
+              },
+              { role: "user", content: movie.content },
+            ],
+          }),
+          fetchPoster(movie.title),
+        ]);
 
         return {
           title: movie.title,
           releaseYear: movie.release_year,
           durationMinutes: movie.duration_minutes,
           description: descriptionResponse.choices[0].message.content,
+          posterUrl,
         };
       }),
     );
