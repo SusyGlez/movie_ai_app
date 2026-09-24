@@ -20,6 +20,37 @@ async function fetchPoster(title) {
   return data.Poster;
 }
 
+const genreKeywords = {
+  horror: [
+    "horror",
+    "scary",
+    "terrifying",
+    "werewolf",
+    "monster",
+    "ghost",
+    "haunted",
+    "slasher",
+    "zombie",
+    "demon",
+    "possession",
+  ],
+  comedy: ["comedy", "comedic", "hilarious", "funny"],
+  drama: ["drama", "dramatic"],
+  action: ["action", "explosive", "fight"],
+  romance: ["romance", "romantic", "love story"],
+  thriller: ["thriller", "suspense", "suspenseful"],
+  scifi: ["sci-fi", "science fiction", "space", "alien", "futuristic"],
+  fantasy: ["fantasy", "magic", "magical", "mythical"],
+  animation: ["animation", "animated"],
+  documentary: ["documentary", "documentaries"],
+  mystery: ["mystery", "whodunit", "detective", "investigation", "sleuth"],
+};
+
+function expandGenre(genre) {
+  const normalized = genre.toLowerCase().trim();
+  return genreKeywords[normalized] || [normalized];
+}
+
 app.post("/recommend", async (req, res) => {
   try {
     const profiles = req.body.people;
@@ -49,7 +80,9 @@ app.post("/recommend", async (req, res) => {
           role: "system",
           content: `Combine the preferences of multiple people into a single short paragraph describing what kind of movie the group would enjoy together.
 
-IMPORTANT: Weigh every person's mood equally, regardless of how much detail they wrote. A person who wrote a long explanation should NOT count more than someone who only wrote a short answer. The group mood tally is: ${moodSummary}. This tally reflects the group's true preference and should be the PRIMARY signal — treat individual favorite movies and explanations as secondary flavor, not as override signals.`,
+IMPORTANT: Weigh every person's mood equally, regardless of how much detail they wrote. A person who wrote a long explanation should NOT count more than someone who only wrote a short answer. The group mood tally is: ${moodSummary}. This tally reflects the group's true preference and should be the PRIMARY signal — treat individual favorite movies and explanations as secondary flavor, not as override signals.
+
+If the group has different moods (e.g. some want Comedy, others want Horror), don't just pick one — look for a genre blend that satisfies multiple preferences at once (e.g. comedy-horror, action-comedy, romantic thriller). The goal is to find common ground, not to favor the loudest or most detailed opinion.`,
         },
         { role: "user", content: profilesText },
       ],
@@ -77,11 +110,13 @@ IMPORTANT: Weigh every person's mood equally, regardless of how much detail they
     const genresToAvoid = profiles
       .map((p) => p.genreToAvoid)
       .filter((g) => g && g.length > 0)
-      .map((g) => g.toLowerCase());
+      .flatMap((g) => expandGenre(g));
 
     const genreFilteredCandidates = candidates.filter((movie) => {
       const movieContentLower = movie.content.toLowerCase();
-      return !genresToAvoid.some((genre) => movieContentLower.includes(genre));
+      return !genresToAvoid.some((keyword) =>
+        movieContentLower.includes(keyword),
+      );
     });
 
     const filteredCandidates = genreFilteredCandidates.filter(

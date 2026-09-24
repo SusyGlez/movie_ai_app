@@ -31,8 +31,11 @@ function renderPersonQuestions() {
   appContainer.innerHTML = `
     <div>
       <p>Person ${personNumber}</p>
-      <label>What's your favorite movie and why?</label>
-      <textarea id="favoriteMovie"></textarea>
+            <label>What's your favorite movie?</label>
+      <input type="text" id="favoriteMovie" placeholder="e.g. Knives Out" required />
+
+      <label>Why do you love it? (optional)</label>
+      <textarea id="favoriteMovieWhy" placeholder="e.g. I love a good twist ending"></textarea>
 
       <label>Are you in the mood for something new or a classic?</label>
       <div>
@@ -40,12 +43,19 @@ function renderPersonQuestions() {
         <button type="button" data-value="Classic" class="newOrClassicBtn">Classic</button>
       </div>
 
-      <label>What are you in the mood for?</label>
+            <label>What are you in the mood for?</label>
       <div>
-        <button type="button" data-value="Fun" class="moodBtn">Fun</button>
-        <button type="button" data-value="Serious" class="moodBtn">Serious</button>
-        <button type="button" data-value="Inspiring" class="moodBtn">Inspiring</button>
-        <button type="button" data-value="Scary" class="moodBtn">Scary</button>
+        <button type="button" data-value="Comedy" class="moodBtn">Comedy</button>
+        <button type="button" data-value="Drama" class="moodBtn">Drama</button>
+        <button type="button" data-value="Mystery" class="moodBtn">Mystery</button>
+        <button type="button" data-value="Horror" class="moodBtn">Horror</button>
+        <button type="button" data-value="Thriller" class="moodBtn">Thriller</button>
+        <button type="button" data-value="Romance" class="moodBtn">Romance</button>
+        <button type="button" data-value="Action" class="moodBtn">Action</button>
+        <button type="button" data-value="Sci-Fi" class="moodBtn">Sci-Fi</button>
+        <button type="button" data-value="Fantasy" class="moodBtn">Fantasy</button>
+        <button type="button" data-value="Documentary" class="moodBtn">Documentary</button>
+        <button type="button" data-value="Animation" class="moodBtn">Animation</button>
       </div>
 
       <label>Any genre you'd rather avoid today? (optional)</label>
@@ -71,8 +81,11 @@ function renderPersonQuestions() {
   });
 
   document.getElementById("nextButton").addEventListener("click", () => {
+    const movieTitle = document.getElementById("favoriteMovie").value;
+    const movieWhy = document.getElementById("favoriteMovieWhy").value.trim();
+
     const personProfile = {
-      favoriteMovie: document.getElementById("favoriteMovie").value,
+      favoriteMovie: movieWhy ? `${movieTitle} — ${movieWhy}` : movieTitle,
       newOrClassic: selectedNewOrClassic,
       mood: selectedMood,
       genreToAvoid: document.getElementById("genreToAvoid").value.trim(),
