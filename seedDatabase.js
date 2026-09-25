@@ -1,12 +1,15 @@
 import fs from "fs";
 import { EJSON } from "bson";
 import { embeddingModel, supabase } from "./config.js";
+import recentMovies from "./recentMovies.js";
 
 const rawData = fs.readFileSync("./allMovies.json", "utf-8");
-const allMovies = rawData
+const mongoMovies = rawData
   .trim()
   .split("\n")
   .map((line) => EJSON.parse(line));
+
+const allMovies = [...mongoMovies, ...recentMovies];
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -53,9 +56,11 @@ async function seedDatabase() {
       m.runtime &&
       m.year &&
       m.imdb?.rating &&
-      m.year >= 1990 &&
-      m.year <= 2026 &&
       !existingTitles.includes(m.title),
+  );
+
+  console.log(
+    `${usableMovies.length} movies available to choose from (after removing duplicates).`,
   );
 
   const moviesToSeed = shuffleArray(usableMovies).slice(0, 100);
